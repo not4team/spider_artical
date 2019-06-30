@@ -1,15 +1,24 @@
 # -*- coding: utf-8 -*-
 from selenium import webdriver
 import time
+import os
+import configparser
+import threading
 import logging
 logging.getLogger().setLevel(logging.INFO)
 
 
-class Spidder:
+class Spidder(threading.Thread):
 
-    request_count = 10
-
-    def __init__(self):
+    def __init__(self, account):
+        threading.Thread.__init__(self)
+        self.account = account
+        cur_path=os.path.dirname(os.path.realpath(__file__))
+        setting_path = os.path.join(cur_path,'setting.conf')
+        config=configparser.ConfigParser(allow_no_value=True)
+        config.read(setting_path)
+        self.target_url = config.get("market","target_url")
+        self.request_count = int(config.get("market", "request_count"))
         profile = webdriver.FirefoxProfile()
         profile.set_preference('network.proxy.type', 1)
         profile.set_preference('network.proxy.http', '127.0.0.1')
@@ -26,8 +35,11 @@ class Spidder:
         self.driver = webdriver.Firefox(
             firefox_profile=profile, options=fireFoxOptions)
 
+    def run(self):
+        self.start_requests()
+        
     def start_requests(self):
-        self.driver.get('https://market.m.taobao.com/apps/market/content/index.html?ut_sk=1.Wy3W3r9w55ADAHidbZuj6sL1_21380790_1561272303791.Copy.33&wh_weex=true&contentId=229246104360&source=darenhome&data_prefetch=true&suid=834CDA17-8679-46B0-9FA0-AB5E3A1DBC06&wx_navbar_transparent=true&sourceType=other&wx_navbar_hidden=false&un=6c8d75f684aaced2e7c4cca5375f99dd&share_crt_v=1&sp_tk=77+lTzRHSllVQzhWWWLvv6U=&cpp=1&shareurl=true&spm=a313p.22.i3.1043979013407&short_name=h.egUbqzW&sm=e8a9a5&app=firefox')
+        self.driver.get(self.target_url)
         # 隐示等待，为了等待充分加载好网址
         self.driver.implicitly_wait(5)
         self.parse()
@@ -50,10 +62,10 @@ class Spidder:
                 # logger.error(driver.page_source)
                 form_username = self.driver.find_element_by_xpath(
                     "//input[@id='username']")
-                form_username.send_keys("xxxx")
+                form_username.send_keys(self.account[0])
                 form_pwd = self.driver.find_element_by_xpath(
                     "//input[@id='password']")
-                form_pwd.send_keys("xxxxxx")
+                form_pwd.send_keys(self.account[1])
                 time.sleep(1)
                 self.driver.find_element_by_xpath(
                     "//button[@id='btn-submit']").click()
